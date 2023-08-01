@@ -6,13 +6,32 @@ from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 from datetime import date
 
-def save_info_on_page(wd, name_li, vacancies_li, applicants_li, ballot_criteria_li):
+def save_info_on_page(wd, name_li=[], vacancies_li=[], applicants_li=[], pr_vacancies_li=[], ballot_criteria_li=[]):
     # find all school cards
     school_cards = wd.find_elements(By.XPATH, "//div[@class='moe-ballot-card m-b:m  ']")
     for school_card in school_cards:
         name_li.append(school_card.find_element(By.XPATH, ".//h3").text)
-        vacancies_li.append(school_card.find_element(By.XPATH, ".//div[@class='info-item'][1]/p[2]").text)
-        applicants_li.append(school_card.find_element(By.XPATH, ".//div[@class='info-item'][2]/p[2]").text)
+        num_info_items = len(school_card.find_elements(By.XPATH, ".//div[@class='info-item']"))
+        if num_info_items == 1:
+            vacancies_li.append(school_card.find_element(By.XPATH, ".//div[@class='info-item'][1]/p[2]").text)
+            applicants_li.append('-')
+            pr_vacancies_li.append('-')  
+
+        elif num_info_items == 2:
+            vacancies_li.append(school_card.find_element(By.XPATH, ".//div[@class='info-item'][1]/p[2]").text)
+            applicants_li.append(school_card.find_element(By.XPATH, ".//div[@class='info-item'][2]/p[2]").text)
+            pr_vacancies_li.append('-')  
+
+        elif num_info_items == 3:
+            vacancies_li.append(school_card.find_element(By.XPATH, ".//div[@class='info-item'][1]/p[2]").text)
+            pr_vacancies_li.append(school_card.find_element(By.XPATH, ".//div[@class='info-item'][2]/p[2]").text)  
+            applicants_li.append(school_card.find_element(By.XPATH, ".//div[@class='info-item'][3]/p[2]").text) 
+
+        else:
+            vacancies_li.append('-')
+            applicants_li.append('-')
+            pr_vacancies_li.append('-')  
+
         try:
             # ballot_vacancies =  phase.find_elements(By.XPATH, ".//div[@class='info-block-balloted info-block d:f jc-sb clearfix']//p[@class='info-data']")[0].text
             # ballot_applicants = phase.find_elements(By.XPATH, ".//div[@class='info-block-balloted info-block d:f jc-sb clearfix']//p[@class='info-data']")[1].text
@@ -20,7 +39,7 @@ def save_info_on_page(wd, name_li, vacancies_li, applicants_li, ballot_criteria_
         except:
             ballot_criteria_li.append("-")
     
-    return name_li, vacancies_li, applicants_li
+    return name_li, vacancies_li, pr_vacancies_li, applicants_li, ballot_criteria_li
 
 
 # Sets the day to current date
@@ -48,14 +67,10 @@ action = ActionChains(wd)
 naviagte_bar = wd.find_element(By.XPATH, "//div[@class='moe-detail-pagination m-l:m d:f fl:r'][1]")
 num_pgs = int(naviagte_bar.find_element(By.CLASS_NAME, 'pag-text').text[-2:])
 
-name_li = []
-vacancies_li = []
-applicants_li = []
-ballot_criteria_li = []
 
 # for each page, get the school name, vacancies and applicants
 for i in range(1, num_pgs+1):
-    name_li, vacancies_li, applicants_li = save_info_on_page(wd, name_li, vacancies_li, applicants_li, ballot_criteria_li)
+    name_li, vacancies_li, pr_vacancies_li, applicants_li, ballot_criteria_li= save_info_on_page(wd)
     # get button
     button = wd.find_element(By.XPATH, "//button[@class='btn-pagination btn-pag-next'][1]")
     # perform the operation
@@ -67,6 +82,7 @@ phase_name = wd.find_element(By.XPATH, "//p[@class='info-title']").text[-2:]
 # append new columns to df
 schools_df['school_name'] = name_li
 schools_df[f'{day} phase {phase_name} vacancies'] = vacancies_li  
+schools_df[f'{day} phase {phase_name} max pr vacancies'] = pr_vacancies_li
 schools_df[f'{day} phase {phase_name} applicants'] = applicants_li
 schools_df[f'{day} phase {phase_name} ballot_criteria'] = ballot_criteria_li
 
